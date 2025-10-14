@@ -1,9 +1,7 @@
-# Delayed-Executor-Monad-Testnet
+# Delayed Executor — Scheduled Transactions on Monad Testnet
 This is a decentralized service for creating and executing pending transactions on the Monad Testnet
 
 Test: https://gmonad.store/delayed-executor/
-
-# Delayed Executor — Scheduled Transactions on Monad Testnet
 
 [![Monad Testnet](https://img.shields.io/badge/Deployed-Monad%20Testnet-blueviolet)](https://testnet.monadexplorer.com/address/0x158290dA77268EE28bc16F7d3D6Dbf10C866e791)
 [![MetaMask Smart Accounts](https://img.shields.io/badge/Compatible-MetaMask%20Smart%20Accounts-orange)](https://docs.metamask.io/delegation-toolkit)
