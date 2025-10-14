@@ -110,8 +110,5 @@ Submission includes a demo video showing end-to-end flow with MetaMask on Monad,
 - [Delegation Toolkit Docs](https://docs.metamask.io/delegation-toolkit)
 - [Monad Docs](https://docs.monad.xyz)
 
-Built with ❤️ for the MetaMask x Monad Hackathon. Questions? Reach out on X or Discord!
-
----
-
-*License: MIT. Contributions welcome!*
+Built with ❤️ for the MetaMask x Monad Hackathon. 
+-
