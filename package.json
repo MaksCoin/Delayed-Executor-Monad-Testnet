@@ -1,0 +1,12 @@
+{
+  "name": "DelayedExecutor",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "hardhat run scripts/deploy.js --network monadTestnet"
+  },
+  "devDependencies": {
+    "ethers": "^6.9.0",
+    "hardhat": "^2.19.0",
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0"
+  }
+}
