@@ -345,12 +345,21 @@
         display: flex;
         gap: 10px;
         align-items: center;
+        flex-wrap: wrap;
     }
     .filter-row label {
         min-width: 120px;
     }
-    .filter-row select {
+    .filter-row select, .filter-row input {
         flex: 1;
+        min-width: 100px;
+    }
+
+    /* Show more button */
+    #showMoreBtn {
+        width: auto;
+        align-self: center;
+        margin: 20px auto;
     }
 
     /* Responsive improvements */
@@ -439,8 +448,8 @@
     <div class="card" id="ordersCard" style="display:none;">
       <h2>View Orders</h2>
       <div class="filter-row">
-        <label>Show up to ID:</label>
-        <input id="readMax" class="ui" type="number" value="10" style="flex: none; width: 80px;"/>
+        <label>Load up to ID (max 1000):</label>
+        <input id="readMax" class="ui" type="number" value="100" min="1" max="1000"/>
         <label>Filter:</label>
         <select id="filterOrders" class="ui">
           <option value="all">All</option>
@@ -450,8 +459,10 @@
         </select>
       </div>
       <button id="readOrdersBtn" class="ui">Load</button>
-      <p class="muted">Auto-refresh every 30 sec. Orders sorted by execution time.</p>
+      <p class="muted">Auto-refresh every 30 sec. Orders sorted by execution time (newest first).</p>
       <div id="ordersList"></div>
+      <button id="showMoreBtn" class="ui" style="display:none;">Show More</button>
+      <p id="paginationInfo" class="muted"></p>
     </div>
 
     <div class="card" id="executeCard" style="display:none;">
@@ -487,6 +498,10 @@
       };
 
       let provider, signer, contract, wsProvider, contractWs, autoRefreshInterval;
+      let allOrders = [];
+      let shownOrders = [];
+      let currentOffset = 0;
+      const pageSize = 10;
 
       const connectBtn = document.getElementById("connectBtn");
       const status = document.getElementById("status");
@@ -501,6 +516,8 @@
       const readOrdersBtn = document.getElementById("readOrdersBtn");
       const ordersList = document.getElementById("ordersList");
       const filterOrders = document.getElementById("filterOrders");
+      const showMoreBtn = document.getElementById("showMoreBtn");
+      const paginationInfo = document.getElementById("paginationInfo");
 
       const nativeFields = document.getElementById("nativeFields");
       const erc20Fields = document.getElementById("erc20Fields");
@@ -527,7 +544,17 @@
         }
       });
 
-      filterOrders.addEventListener("change", loadOrders);
+      filterOrders.addEventListener("change", () => {
+        allOrders = []; // Reset to re-filter
+        shownOrders = [];
+        currentOffset = 0;
+        loadAndDisplayOrders();
+      });
+
+      showMoreBtn.addEventListener("click", () => {
+        currentOffset += pageSize;
+        loadAndDisplayOrders();
+      });
 
       function formatWaitingTime(waitSec) {
         let totalSec = waitSec;
@@ -543,6 +570,92 @@
         if (minutes > 0) parts.push(`${minutes}m`);
         if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
         return parts.join(' ');
+      }
+
+      async function loadAndDisplayOrders() {
+        if (!contract) return;
+        try {
+          let maxId = parseInt(document.getElementById("readMax").value || "100");
+          maxId = Math.min(maxId, 1000);
+          const currentTime = Math.floor(Date.now() / 1000);
+          let newOrders = [];
+          for (let id = 1; id <= maxId; id++) {
+            const o = await contract.orders(BigInt(id));
+            if (o.creator === ethers.ZeroAddress) continue;
+            const dt = new Date(Number(o.executeAfter) * 1000).toLocaleString();
+            newOrders.push({
+              id,
+              creator: o.creator,
+              target: o.target,
+              value: ethers.formatEther(o.value),
+              executeAfter: Number(o.executeAfter),
+              executed: o.executed,
+              data: o.data,
+              dt
+            });
+          }
+          allOrders = newOrders.sort((a, b) => b.executeAfter - a.executeAfter); // Descending: newest first
+
+          displayOrders(currentTime);
+        } catch(e) {
+          ordersList.innerHTML = `<span class="error">Error: ${e.message}</span>`;
+        }
+      }
+
+      function displayOrders(currentTime) {
+        const filter = filterOrders.value;
+
+        let filtered = allOrders.map(order => ({
+          ...order,
+          isReady: !order.executed && currentTime >= order.executeAfter,
+          isWaiting: !order.executed && currentTime < order.executeAfter
+        })).filter(order => {
+          if (filter === "all") return true;
+          if (filter === "waiting") return order.isWaiting;
+          if (filter === "ready") return order.isReady;
+          if (filter === "executed") return order.executed;
+          return false;
+        });
+
+        // Already sorted descending from load
+
+        const start = currentOffset;
+        const end = start + pageSize;
+        const pageOrders = filtered.slice(start, end);
+
+        let html = "";
+        pageOrders.forEach(order => {
+          const className = `order-item ${order.executed ? 'executed' : (order.isReady ? 'ready' : 'pending')}`;
+          let execBtn = "";
+          if (order.isReady) {
+            execBtn = `<button class="mini-execute" onclick="executeOrder(${order.id})">Execute</button>`;
+          } else if (order.isWaiting) {
+            const waitSec = order.executeAfter - currentTime;
+            execBtn = `<span class="muted">Waiting: ${formatWaitingTime(waitSec)}</span>`;
+          } else {
+            execBtn = `<span class="muted">Executed</span>`;
+          }
+          html += `<div class="${className}">
+            <b>ID ${order.id}</b> ${execBtn}<br>
+            creator: ${order.creator}<br>
+            target: ${order.target}<br>
+            value: ${order.value} MON<br>
+            executeAfter: ${order.dt}<br>
+            data: <code>${order.data}</code>
+          </div>`;
+        });
+
+        if (currentOffset === 0) {
+          ordersList.innerHTML = html;
+        } else {
+          ordersList.innerHTML += html;
+        }
+
+        const totalFiltered = filtered.length;
+        const totalShown = Math.min(end, totalFiltered);
+        paginationInfo.textContent = `Showing ${totalShown} of ${totalFiltered} orders`;
+
+        showMoreBtn.style.display = totalShown < totalFiltered ? 'block' : 'none';
       }
 
       async function updateExecTimeInfo() {
@@ -598,75 +711,21 @@
           await tx.wait();
           execResult.innerHTML = `<span class="success">✅ Executed! Tx: <a href="https://testnet.monadexplorer.com/tx/${tx.hash}" target="_blank">${tx.hash}</a></span>`;
           updateExecTimeInfo();
-          loadOrders();
+          allOrders = []; // Refresh
+          shownOrders = [];
+          currentOffset = 0;
+          loadAndDisplayOrders();
         } catch(e) {
           execResult.innerHTML = `<span class="error">Error: ${e.message}</span>`;
         }
       }
 
-      async function loadOrders() {
-        try {
-          const max = parseInt(document.getElementById("readMax").value || "10");
-          const filter = filterOrders.value;
-          const currentTime = Math.floor(Date.now() / 1000);
-          let orders = [];
-          for (let id = 1; id <= max; id++) {
-            const o = await contract.orders(id);
-            if (o.creator === ethers.ZeroAddress) continue;
-            const dt = new Date(Number(o.executeAfter) * 1000).toLocaleString();
-            const isExecuted = o.executed;
-            const isReady = !isExecuted && currentTime >= Number(o.executeAfter);
-            const isWaiting = !isExecuted && !isReady;
-            const order = {
-              id,
-              creator: o.creator,
-              target: o.target,
-              value: ethers.formatEther(o.value),
-              executeAfter: Number(o.executeAfter),
-              executed: isExecuted,
-              data: o.data,
-              dt,
-              isReady,
-              isWaiting
-            };
-            // Apply filter
-            if (filter === "all" || 
-                (filter === "waiting" && order.isWaiting) || 
-                (filter === "ready" && order.isReady) || 
-                (filter === "executed" && order.executed)) {
-              orders.push(order);
-            }
-          }
-          orders.sort((a, b) => a.executeAfter - b.executeAfter);
-
-          let html = "";
-          orders.forEach(order => {
-            const className = `order-item ${order.executed ? 'executed' : (order.isReady ? 'ready' : 'pending')}`;
-            let execBtn = "";
-            if (order.isReady) {
-              execBtn = `<button class="mini-execute" onclick="executeOrder(${order.id})">Execute</button>`;
-            } else if (order.isWaiting) {
-              const waitSec = order.executeAfter - currentTime;
-              execBtn = `<span class="muted">Waiting: ${formatWaitingTime(waitSec)}</span>`;
-            } else {
-              execBtn = `<span class="muted">Executed</span>`;
-            }
-            html += `<div class="${className}">
-              <b>ID ${order.id}</b> ${execBtn}<br>
-              creator: ${order.creator}<br>
-              target: ${order.target}<br>
-              value: ${order.value} MON<br>
-              executeAfter: ${order.dt}<br>
-              data: <code>${order.data}</code>
-            </div>`;
-          });
-          ordersList.innerHTML = html || "No orders";
-        } catch(e) {
-          ordersList.innerHTML = `<span class="error">Error: ${e.message}</span>`;
-        }
-      }
-
-      readOrdersBtn.addEventListener("click", loadOrders);
+      readOrdersBtn.addEventListener("click", () => {
+        allOrders = [];
+        shownOrders = [];
+        currentOffset = 0;
+        loadAndDisplayOrders();
+      });
 
       async function switchToMonad() {
         try {
@@ -705,8 +764,11 @@
 
         setupEventListeners();
 
-        autoRefreshInterval = setInterval(loadOrders, 30000);
-        loadOrders();
+        autoRefreshInterval = setInterval(() => {
+          allOrders = [];
+          loadAndDisplayOrders();
+        }, 30000);
+        loadAndDisplayOrders();
       });
 
       document.getElementById("createOrderBtn").addEventListener("click", async ()=>{
@@ -761,7 +823,8 @@
           document.getElementById("createResult").innerHTML = `<span class="success">⏳ Tx sent: <a href="https://testnet.monadexplorer.com/tx/${tx.hash}" target="_blank">${tx.hash}</a></span>`;
           await tx.wait();
           document.getElementById("createResult").innerHTML = `<span class="success">✅ Order created: <a href="https://testnet.monadexplorer.com/tx/${tx.hash}" target="_blank">${tx.hash}</a></span>`;
-          loadOrders();
+          allOrders = []; // Refresh
+          loadAndDisplayOrders();
         } catch(e) {
           document.getElementById("createResult").innerHTML = `<span class="error">Error: ${e.message}</span>`;
         }
@@ -781,7 +844,8 @@
         div.style.margin = "6px 0";
         div.innerHTML = `<span class="success">[${new Date().toLocaleTimeString()}] ${type}: ID ${id}</span>`;
         ordersList.prepend(div);
-        loadOrders();
+        allOrders = []; // Refresh
+        loadAndDisplayOrders();
       }
 
       function setupEventListeners() {
