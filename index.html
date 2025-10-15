@@ -459,7 +459,7 @@
         </select>
       </div>
       <button id="readOrdersBtn" class="ui">Load</button>
-      <p class="muted">Auto-refresh every 30 sec. Orders sorted by execution time (newest first).</p>
+      <p class="muted">Auto-refresh every 10 sec. Orders sorted by execution time (newest first).</p>
       <div id="ordersList"></div>
       <button id="showMoreBtn" class="ui" style="display:none;">Show More</button>
       <p id="paginationInfo" class="muted"></p>
@@ -580,25 +580,36 @@
           const currentTime = Math.floor(Date.now() / 1000);
           let newOrders = [];
           for (let id = 1; id <= maxId; id++) {
-            const o = await contract.orders(BigInt(id));
-            if (o.creator === ethers.ZeroAddress) continue;
-            const dt = new Date(Number(o.executeAfter) * 1000).toLocaleString();
-            newOrders.push({
-              id,
-              creator: o.creator,
-              target: o.target,
-              value: ethers.formatEther(o.value),
-              executeAfter: Number(o.executeAfter),
-              executed: o.executed,
-              data: o.data,
-              dt
-            });
+            try {
+              const o = await contract.orders(BigInt(id));
+              if (o.creator === ethers.ZeroAddress) continue;
+              const dt = new Date(Number(o.executeAfter) * 1000).toLocaleString();
+              newOrders.push({
+                id,
+                creator: o.creator,
+                target: o.target,
+                value: ethers.formatEther(o.value),
+                executeAfter: Number(o.executeAfter),
+                executed: o.executed,
+                data: o.data,
+                dt
+              });
+            } catch (e) {
+              // Silently skip non-existent orders (CALL_EXCEPTION or similar)
+              if (e.code === 'CALL_EXCEPTION') {
+                console.log(`Order ${id} does not exist, skipping.`);
+              } else {
+                console.error(`Error loading order ${id}:`, e);
+              }
+              continue;
+            }
           }
           allOrders = newOrders.sort((a, b) => b.executeAfter - a.executeAfter); // Descending: newest first
 
           displayOrders(currentTime);
         } catch(e) {
-          ordersList.innerHTML = `<span class="error">Error: ${e.message}</span>`;
+          console.error('Unexpected error in loadAndDisplayOrders:', e);
+          ordersList.innerHTML = `<span class="error">Unexpected error loading orders. Please try again.</span>`;
         }
       }
 
@@ -690,8 +701,13 @@
             executeBtn.disabled = false;
           }
         } catch (e) {
-          execTimeInfo.textContent = "Check error: " + e.message;
-          executeBtn.disabled = true;
+          if (e.code === 'CALL_EXCEPTION') {
+            execTimeInfo.textContent = "Order not found.";
+            executeBtn.disabled = true;
+          } else {
+            execTimeInfo.textContent = "Check error: " + e.message;
+            executeBtn.disabled = true;
+          }
         }
       }
 
@@ -767,7 +783,7 @@
         autoRefreshInterval = setInterval(() => {
           allOrders = [];
           loadAndDisplayOrders();
-        }, 30000);
+        }, 10000); // Reduced to 10 seconds for more real-time feel without overload
         loadAndDisplayOrders();
       });
 
@@ -826,7 +842,12 @@
           allOrders = []; // Refresh
           loadAndDisplayOrders();
         } catch(e) {
-          document.getElementById("createResult").innerHTML = `<span class="error">Error: ${e.message}</span>`;
+          let errorMsg = e.message;
+          // Handle user rejection more gracefully
+          if (e.code === 'ACTION_REJECTED' || e.code === 4001 || e.message.includes('user rejected') || e.message.includes('User denied transaction signature')) {
+            errorMsg = 'Transaction rejected by user. Please confirm the signature in MetaMask to create the order.';
+          }
+          document.getElementById("createResult").innerHTML = `<span class="error">Error: ${errorMsg}</span>`;
         }
       });
 
