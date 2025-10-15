@@ -106,7 +106,7 @@ Submission includes a demo video showing end-to-end flow with MetaMask on Monad,
 
 ## Resources
 - [Contract on Explorer](https://testnet.monadexplorer.com/address/0x158290dA77268EE28bc16F7d3D6Dbf10C866e791)
-- [Demo Video](https://example.com/demo.mp4) – Shows Smart Accounts flow on Monad.
+- [Demo Video](https://youtu.be/172bO35MY6A) – Shows Smart Accounts flow on Monad.
 - [Delegation Toolkit Docs](https://docs.metamask.io/delegation-toolkit)
 - [Monad Docs](https://docs.monad.xyz)
 
