@@ -17,14 +17,14 @@
         --gold: #FFD700;
     }
 
-    body {
+    .app {
         background-color: var(--bg);
         color: var(--neon);
         font-family: 'Inter', sans-serif;
         margin: 0;
+        padding: 30px;
         max-width: 900px;
         margin: 0 auto;
-        padding: 30px;
     }
 
     .container {
@@ -32,7 +32,7 @@
         margin: 0 auto;
     }
 
-    h1 {
+    .app h1 {
         text-align: center;
         font-family: 'Press Start 2P', cursive;
         font-size: 1.2rem;
@@ -41,7 +41,7 @@
         margin-bottom: 30px;
     }
 
-    h2 {
+    .app h2 {
         font-family: 'Press Start 2P', cursive;
         font-size: 0.9rem;
         color: var(--neon);
@@ -49,7 +49,7 @@
         margin-bottom: 15px;
     }
 
-    p { margin: 10px 0; font-size: 0.9rem; }
+    .app p { margin: 10px 0; font-size: 0.9rem; }
     
     .card {
         background: linear-gradient(180deg, rgba(6,16,22,0.96), rgba(2,6,10,0.96));
@@ -96,9 +96,13 @@
     .ui.danger { border-color: var(--danger); color: var(--danger); }
     .ui.danger:hover { border-color: var(--danger); background: rgba(255, 85, 119, 0.1); box-shadow: 0 0 8px rgba(255, 85, 119, 0.3); }
     
-    input.ui { width: 100%; box-sizing: border-box; }
-    textarea.ui { width: 100%; box-sizing: border-box; resize: vertical; }
-    select.ui { width: 100%; box-sizing: border-box; }
+    input.ui, textarea.ui, select.ui { width: 100%; box-sizing: border-box; }
+    textarea.ui { resize: vertical; }
+
+    select.ui option {
+        background-color: var(--darker-bg);
+        color: var(--neon);
+    }
     
     #messageControls { display: flex; gap: 10px; }
     #messageInput { flex-grow: 1; }
@@ -257,15 +261,27 @@
 
     button.mini-execute { 
         width: auto; 
-        padding: 6px 12px; 
+        padding: 8px 16px; 
         margin-left: 10px; 
         font-size: 12px; 
-        background: linear-gradient(90deg, var(--neon), var(--accent)); 
+        background: linear-gradient(135deg, var(--neon), var(--accent)); 
         border: 1px solid var(--neon); 
-        box-shadow: 0 0 5px var(--neon); 
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.3), inset 0 1px 0 rgba(255,255,255,0.2); 
+        color: var(--darker-bg);
+        font-weight: bold;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     button.mini-execute:hover { 
-        box-shadow: 0 0 15px var(--neon); 
+        box-shadow: 0 0 20px var(--neon), 0 0 30px var(--accent);
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, var(--accent), var(--neon));
+    }
+    button.mini-execute:active {
+        transform: translateY(0);
     }
 
     .muted { 
@@ -281,12 +297,71 @@
         text-shadow: 0 0 5px var(--accent); 
     }
 
+    /* Delay inputs row */
+    .delay-row {
+        display: flex;
+        gap: 10px;
+    }
+    .delay-row input {
+        flex: 1;
+    }
+
+    /* Checkbox and datetime picker */
+    #dateTimePicker {
+        margin-top: 10px;
+    }
+    #useDateTimeCheckbox {
+        margin-left: 8px;
+        transform: scale(1.2);
+        accent-color: var(--neon);
+    }
+
+    /* Enhanced Execute button in executeCard */
+    #executeBtn {
+        background: linear-gradient(135deg, var(--neon), var(--accent)); 
+        border: 1px solid var(--neon); 
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.3), inset 0 1px 0 rgba(255,255,255,0.2); 
+        color: var(--darker-bg);
+        font-weight: bold;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+    #executeBtn:hover {
+        box-shadow: 0 0 20px var(--neon), 0 0 30px var(--accent);
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, var(--accent), var(--neon));
+    }
+    #executeBtn:active {
+        transform: translateY(0);
+    }
+
+    /* Filter row */
+    .filter-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .filter-row label {
+        min-width: 120px;
+    }
+    .filter-row select {
+        flex: 1;
+    }
+
     /* Responsive improvements */
     @media (max-width: 480px) {
-        body { padding: 10px; }
+        .app { padding: 0px; }
         .container { max-width: 100%; }
-        h1 { font-size: 1rem; }
+        .app h1 { font-size: 1rem; }
         #messageControls { flex-direction: column; }
+        .delay-row { flex-direction: column; }
+        .filter-row { flex-direction: column; }
+        .filter-row label { min-width: auto; }
     }
 
     pre {
@@ -300,71 +375,93 @@
   </style>
 </head>
 <body>
-  <h1>Delayed Executor — Monad Testnet</h1>
+  <div class="app">
+    <h1>Delayed Executor — Monad Testnet</h1>
 
-  <div class="card">
-    <button id="connectBtn" class="ui">🦊 Connect MetaMask</button>
-    <p id="status">Not connected</p>
-  </div>
-
-  <div class="card" id="createCard" style="display:none;">
-    <h2>Create Delayed Order</h2>
-
-    <label>Order Type</label>
-    <select id="orderType" class="ui">
-      <option value="native">Send MON (native)</option>
-      <option value="erc20">ERC20.transfer()</option>
-      <option value="custom">Custom calldata</option>
-    </select>
-
-    <div id="nativeFields">
-      <label>Target (where to send MON)</label>
-      <input id="targetNative" class="ui" placeholder="0x..."/>
-      <label>Amount (MON)</label>
-      <input id="valueNative" class="ui" type="number" step="0.000000000000000001" value="0.01"/>
+    <div class="card">
+      <button id="connectBtn" class="ui">🦊 Connect MetaMask</button>
+      <p id="status">Not connected</p>
     </div>
 
-    <div id="erc20Fields" style="display:none;">
-      <label>ERC20 Token Address</label>
-      <input id="erc20Address" class="ui" placeholder="0x..."/>
-      <label>Recipient (to)</label>
-      <input id="erc20To" class="ui" placeholder="0x..."/>
-      <label>Token Amount</label>
-      <input id="erc20Amount" class="ui" type="number" step="0.000000000000000001" value="0"/>
+    <div class="card" id="createCard" style="display:none;">
+      <h2>Create Delayed Order</h2>
+
+      <label>Order Type</label>
+      <select id="orderType" class="ui">
+        <option value="native">Send MON (native)</option>
+        <option value="erc20">ERC20.transfer()</option>
+        <option value="custom">Custom calldata</option>
+      </select>
+
+      <div id="nativeFields">
+        <label>Target (where to send MON)</label>
+        <input id="targetNative" class="ui" placeholder="0x..."/>
+        <label>Amount (MON)</label>
+        <input id="valueNative" class="ui" type="number" step="0.000000000000000001" value="0.01"/>
+      </div>
+
+      <div id="erc20Fields" style="display:none;">
+        <label>ERC20 Token Address</label>
+        <input id="erc20Address" class="ui" placeholder="0x..."/>
+        <label>Recipient (to)</label>
+        <input id="erc20To" class="ui" placeholder="0x..."/>
+        <label>Token Amount</label>
+        <input id="erc20Amount" class="ui" type="number" step="0.000000000000000001" value="0"/>
+      </div>
+
+      <div id="customFields" style="display:none;">
+        <label>Target</label>
+        <input id="targetCustom" class="ui" placeholder="0x..."/>
+        <label>Calldata (hex)</label>
+        <textarea id="dataCustom" class="ui" placeholder="0x..."></textarea>
+        <label>Value (MON)</label>
+        <input id="valueCustom" class="ui" type="number" step="0.000000000000000001" value="0"/>
+      </div>
+
+      <label>Delay</label>
+      <div class="delay-row">
+        <input id="delayDays" class="ui" type="number" min="0" value="0" placeholder="Days"/>
+        <input id="delayHours" class="ui" type="number" min="0" max="23" value="0" placeholder="Hours"/>
+        <input id="delayMinutes" class="ui" type="number" min="0" max="59" value="1" placeholder="Minutes"/>
+      </div>
+
+      <label style="display: flex; align-items: center;">
+        <input type="checkbox" id="useDateTimeCheckbox"> Select date and time
+      </label>
+      <div id="dateTimePicker" style="display:none;">
+        <input type="datetime-local" id="executeDateTime" class="ui" />
+      </div>
+
+      <button id="createOrderBtn" class="ui">Create Order</button>
+      <p id="createResult"></p>
     </div>
 
-    <div id="customFields" style="display:none;">
-      <label>Target</label>
-      <input id="targetCustom" class="ui" placeholder="0x..."/>
-      <label>Calldata (hex)</label>
-      <textarea id="dataCustom" class="ui" placeholder="0x..."></textarea>
-      <label>Value (MON)</label>
-      <input id="valueCustom" class="ui" type="number" step="0.000000000000000001" value="0"/>
+    <div class="card" id="ordersCard" style="display:none;">
+      <h2>View Orders</h2>
+      <div class="filter-row">
+        <label>Show up to ID:</label>
+        <input id="readMax" class="ui" type="number" value="10" style="flex: none; width: 80px;"/>
+        <label>Filter:</label>
+        <select id="filterOrders" class="ui">
+          <option value="all">All</option>
+          <option value="waiting">Waiting</option>
+          <option value="ready">Ready to Execute</option>
+          <option value="executed">Executed</option>
+        </select>
+      </div>
+      <button id="readOrdersBtn" class="ui">Load</button>
+      <p class="muted">Auto-refresh every 30 sec. Orders sorted by execution time.</p>
+      <div id="ordersList"></div>
     </div>
 
-    <label>Delay (minutes)</label>
-    <input id="delay" class="ui" type="number" value="1" min="1"/>
-
-    <button id="createOrderBtn" class="ui">Create Order</button>
-    <p id="createResult"></p>
-  </div>
-
-  <div class="card" id="ordersCard" style="display:none;">
-    <h2>View Orders</h2>
-    <label>Show up to ID:</label>
-    <input id="readMax" class="ui" type="number" value="10"/>
-    <button id="readOrdersBtn" class="ui">Load</button>
-    <p class="muted">Auto-refresh every 30 sec. Orders sorted by execution time.</p>
-    <div id="ordersList"></div>
-  </div>
-
-  <div class="card" id="executeCard" style="display:none;">
-    <h2>Execute Order (manual)</h2>
-    <label>Order ID</label>
-    <input id="execId" class="ui" placeholder="e.g. 1"/>
-    <button id="executeBtn" class="ui">Execute(id)</button>
-    <p id="execResult"></p>
-    <p id="execTimeInfo" class="muted"></p>
+    <div class="card" id="executeCard" style="display:none;">
+      <h2>Execute Order (manual)</h2>
+      <label>Order ID</label>
+      <input id="execId" class="ui" placeholder="e.g. 1"/>
+      <button id="executeBtn" class="ui">Execute(id)</button>
+      <p id="execResult"></p>
+      <p id="execTimeInfo" class="muted"></p>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>
@@ -403,16 +500,50 @@
       const execTimeInfo = document.getElementById("execTimeInfo");
       const readOrdersBtn = document.getElementById("readOrdersBtn");
       const ordersList = document.getElementById("ordersList");
+      const filterOrders = document.getElementById("filterOrders");
 
       const nativeFields = document.getElementById("nativeFields");
       const erc20Fields = document.getElementById("erc20Fields");
       const customFields = document.getElementById("customFields");
+      const useDateTimeCheckbox = document.getElementById("useDateTimeCheckbox");
+      const dateTimePicker = document.getElementById("dateTimePicker");
+      const delayDays = document.getElementById("delayDays");
+      const delayHours = document.getElementById("delayHours");
+      const delayMinutes = document.getElementById("delayMinutes");
+      const executeDateTime = document.getElementById("executeDateTime");
 
       orderType.addEventListener("change", () => {
         nativeFields.style.display = orderType.value === "native" ? "block" : "none";
         erc20Fields.style.display = orderType.value === "erc20" ? "block" : "none";
         customFields.style.display = orderType.value === "custom" ? "block" : "none";
       });
+
+      useDateTimeCheckbox.addEventListener("change", () => {
+        dateTimePicker.style.display = useDateTimeCheckbox.checked ? "block" : "none";
+        if (useDateTimeCheckbox.checked) {
+          const now = new Date();
+          now.setMinutes(now.getMinutes() + 1);
+          executeDateTime.value = now.toISOString().slice(0, 16);
+        }
+      });
+
+      filterOrders.addEventListener("change", loadOrders);
+
+      function formatWaitingTime(waitSec) {
+        let totalSec = waitSec;
+        const days = Math.floor(totalSec / 86400);
+        totalSec %= 86400;
+        const hours = Math.floor(totalSec / 3600);
+        totalSec %= 3600;
+        const minutes = Math.floor(totalSec / 60);
+        const seconds = totalSec % 60;
+        let parts = [];
+        if (days > 0) parts.push(`${days}d`);
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0) parts.push(`${minutes}m`);
+        if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+        return parts.join(' ');
+      }
 
       async function updateExecTimeInfo() {
         const idStr = execIdInput.value.trim();
@@ -439,7 +570,7 @@
           const dt = new Date(executeAfter * 1000).toLocaleString();
           if (currentTime < executeAfter) {
             const waitSec = executeAfter - currentTime;
-            execTimeInfo.innerHTML = `<span class="error">Too early! Wait ${Math.floor(waitSec / 60)} min ${waitSec % 60} sec until ${dt}</span>`;
+            execTimeInfo.innerHTML = `<span class="error">Too early! Wait ${formatWaitingTime(waitSec)} until ${dt}</span>`;
             executeBtn.disabled = true;
           } else {
             execTimeInfo.textContent = `Ready to execute (from ${dt})`;
@@ -476,36 +607,47 @@
       async function loadOrders() {
         try {
           const max = parseInt(document.getElementById("readMax").value || "10");
+          const filter = filterOrders.value;
           const currentTime = Math.floor(Date.now() / 1000);
           let orders = [];
           for (let id = 1; id <= max; id++) {
             const o = await contract.orders(id);
             if (o.creator === ethers.ZeroAddress) continue;
             const dt = new Date(Number(o.executeAfter) * 1000).toLocaleString();
-            orders.push({
+            const isExecuted = o.executed;
+            const isReady = !isExecuted && currentTime >= Number(o.executeAfter);
+            const isWaiting = !isExecuted && !isReady;
+            const order = {
               id,
               creator: o.creator,
               target: o.target,
               value: ethers.formatEther(o.value),
               executeAfter: Number(o.executeAfter),
-              executed: o.executed,
+              executed: isExecuted,
               data: o.data,
-              dt
-            });
+              dt,
+              isReady,
+              isWaiting
+            };
+            // Apply filter
+            if (filter === "all" || 
+                (filter === "waiting" && order.isWaiting) || 
+                (filter === "ready" && order.isReady) || 
+                (filter === "executed" && order.executed)) {
+              orders.push(order);
+            }
           }
           orders.sort((a, b) => a.executeAfter - b.executeAfter);
 
           let html = "";
           orders.forEach(order => {
-            const isPending = !order.executed;
-            const isReady = isPending && currentTime >= order.executeAfter;
-            const className = `order-item ${isPending ? 'pending' : 'executed'} ${isReady ? 'ready' : ''}`;
+            const className = `order-item ${order.executed ? 'executed' : (order.isReady ? 'ready' : 'pending')}`;
             let execBtn = "";
-            if (isReady) {
+            if (order.isReady) {
               execBtn = `<button class="mini-execute" onclick="executeOrder(${order.id})">Execute</button>`;
-            } else if (isPending) {
+            } else if (order.isWaiting) {
               const waitSec = order.executeAfter - currentTime;
-              execBtn = `<span class="muted">Waiting: ${Math.floor(waitSec / 60)} min ${waitSec % 60} sec</span>`;
+              execBtn = `<span class="muted">Waiting: ${formatWaitingTime(waitSec)}</span>`;
             } else {
               execBtn = `<span class="muted">Executed</span>`;
             }
@@ -569,8 +711,22 @@
 
       document.getElementById("createOrderBtn").addEventListener("click", async ()=>{
         try {
-          const delayMin = parseInt(document.getElementById("delay").value || "1");
-          const executeAfter = Math.floor(Date.now()/1000) + delayMin * 60;
+          let executeAfter;
+          if (useDateTimeCheckbox.checked) {
+            const dtValue = document.getElementById("executeDateTime").value;
+            if (!dtValue) throw new Error("Please select a date and time");
+            executeAfter = Math.floor(new Date(dtValue).getTime() / 1000);
+            if (executeAfter <= Math.floor(Date.now() / 1000)) throw new Error("Execution time must be in the future");
+          } else {
+            const days = parseInt(delayDays.value || "0");
+            const hours = parseInt(delayHours.value || "0");
+            const minutes = parseInt(delayMinutes.value || "1");
+            if (days < 0 || hours < 0 || minutes < 0) throw new Error("Delay values must be non-negative");
+            const delaySec = days * 86400 + hours * 3600 + minutes * 60;
+            executeAfter = Math.floor(Date.now() / 1000) + delaySec;
+            if (delaySec <= 0) throw new Error("Delay must be at least 1 minute");
+          }
+
           let target, data, valueWei;
 
           if(orderType.value === "native"){
